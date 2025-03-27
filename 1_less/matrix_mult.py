@@ -1,40 +1,27 @@
-def read_matrix(n):
-    """Чтение матрицы размером n x n"""
-    matrix = []
-    for q in range(n):
-        row = list(map(int, input("укажите числа матрицы ").split()))
-        matrix.append(row)
-    return matrix
+def matrix_multiply(n, matrix_a, matrix_b):
+    result_matrix = [[0 for _ in range(n)] for _ in range(n)]
 
-def multiply_matrices(A, B):
-    """Умножение двух квадратных матриц"""
-    n = len(A)
-    C = [[0 for q in range(n)] for q in range(n)]
-    
     for i in range(n):
         for j in range(n):
             for k in range(n):
-                C[i][j] += A[i][k] * B[k][j]
-    
-    return C
+                result_matrix[i][j] += matrix_a[i][k] * matrix_b[k][j]
 
-def print_matrix(matrix):
-    """Вывод матрицы"""
-    for row in matrix:
-        print(*row)
+    return result_matrix
 
-# Считываем размерность матриц
-n = int(input("Укажите размер матриц "))
+if __name__ == "__main__":
+    n = int(input())
 
-# Читаем первую матрицу A
-print("Введите элементы первой матрицы:")
-A = read_matrix(n)
+    matrix_a = []
+    for _ in range(n):
+        row = list(map(int, input().split()))
+        matrix_a.append(row)
 
-# Читаем вторую матрицу B
-print("Введите элементы второй матрицы:")
-B = read_matrix(n)
+    matrix_b = []
+    for _ in range(n):
+        row = list(map(int, input().split()))
+        matrix_b.append(row)
 
-# Вычисляем произведение и выводим результат
-result = multiply_matrices(A, B)
-print("\nРезультат умножения матриц:")
-print_matrix(result)
+    result = matrix_multiply(n, matrix_a, matrix_b)
+
+    for row in result:
+        print(' '.join(map(str, row)))

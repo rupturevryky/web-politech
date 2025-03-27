@@ -1,6 +1,7 @@
 import subprocess
 import pytest
 import os
+import csv
 
 INTERPRETER = 'python3'
 
@@ -90,6 +91,60 @@ test_data = {
     ],
     'max_word': [
         ('', "сосредоточенности")
+    ],
+    # 'price_sum': [
+    #     (
+    #         "Продукт,Взрослый,Пенсионер,Ребенок\nяблоки,100.50,200.25,300.75\nхлеб,50.25,75.50,100.75",
+    #         "150.75 275.75 401.50"
+    #     ),
+    #     (
+    #         "Продукт,Взрослый,Пенсионер,Ребенок\nмолоко,200.00,150.00,100.00",
+    #         "200.00 150.00 100.00"
+    #     ),
+    #     (
+    #         "Продукт,Взрослый,Пенсионер,Ребенок\nтовар1,10.555,20.555,30.555\nтовар2,15.555,25.555,35.555",
+    #         "26.11 46.11 66.11"
+    #     ),
+    #     (
+    #         "Продукт,Взрослый,Пенсионер,Ребенок\nединственный,123.45,234.56,345.67",
+    #         "123.45 234.56 345.67"
+    #     )
+    # ],
+    'metro': [
+        (["1", "10 20", "15"], "1"),
+        (["2", "10 20", "20 30", "20"], "2"),
+        (["2", "10 20", "30 40", "25"], "0"),
+        (["5", "1 10", "2 9", "3 8", "4 7", "5 6", "5"], "5"),
+        (["3", "10 20", "15 25", "5 15", "15"], "3"),
+        ([], "0"),
+        (["2", "10 20"], "0"),
+        (["abc", "10 20", "15"], "0"),
+        (["1", "10 abc", "15"], "0")
+    ],
+    'minion_game': [
+        (['BANANA'],['Stuart 12']),
+        (['AAAA'],['Kevin 10']),
+        (['B'],['Stuart 1']),
+        (['A'],['Kevin 1']),
+    ],
+    'is_leap': [
+        (['2000'],['True']),
+        (['1900'],['False']),
+        (['1899'],['Error!']),
+        (['100001'],['Error!']),
+    ],
+    'happiness': [
+        (['3 2','1 2 3','1 2','3 4'],['1']),
+        (['3 1','1 1 1','1','2'],['3']),
+        (['3','1 2 3','',''],['']),
+    ],
+    'pirate_ship': [
+        (['50 3','Gold 10 60','Silver 20 100','Copper 30 120'],['Gold 10 60.00','Silver 20 100.00','Copper 20.00 80.00']),
+    ],
+    'matrix_mult': [
+        (['2','1 2','3 4','5 6','7 8'],['19 22','43 50']),
+        (['2','0 0','0 0','1 1','1 1'],['0 0','0 0']),
+        (['2','-1 2','3 -4','5 -6','-7 8'],['-19 22','43 -50']),
     ]
 }
 
@@ -139,3 +194,123 @@ def test_split_and_join(input_data, expected):
 @pytest.mark.parametrize("input_data, expected", test_data['max_word'])
 def test_max_word(input_data, expected):
     assert run_script('max_word.py', [input_data]) == expected
+
+def run_price_sum_script(input_file=None):
+    """Запускает price_sum.py с указанным файлом"""
+    cmd = [INTERPRETER, 'price_sum.py']
+    if input_file:
+        cmd.append(input_file)
+    
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding='utf-8'
+    )
+    return result.stdout.strip()
+
+def create_test_file(content, filename='test_products.csv'):
+    """Создает временный CSV файл"""
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return filename
+
+def remove_test_file(filename):
+    """Удаляет временный файл"""
+    if os.path.exists(filename):
+        os.remove(filename)
+
+def test_with_test_data():
+    """Тест с временными данными"""
+    test_content = """Продукт,Взрослый,Пенсионер,Ребенок
+яблоки,100.50,200.25,300.75
+хлеб,50.25,75.50,100.75"""
+    
+    test_file = create_test_file(test_content)
+    try:
+        output = run_price_sum_script(test_file)
+        # Разбиваем вывод на числа и проверяем каждое
+        nums = output.split()
+        assert len(nums) == 3
+        assert float(nums[0]) == pytest.approx(150.75)
+        assert float(nums[1]) == pytest.approx(275.75)
+        assert float(nums[2]) == pytest.approx(401.50)
+    finally:
+        remove_test_file(test_file)
+
+def test_with_rounding():
+    """Тест с округлением"""
+    test_content = """Продукт,Взрослый,Пенсионер,Ребенок
+товар1,10.555,20.555,30.555
+товар2,15.555,25.555,35.555"""
+    
+    test_file = create_test_file(test_content)
+    try:
+        output = run_price_sum_script(test_file)
+        nums = output.split()
+        assert len(nums) == 3
+        assert float(nums[0]) == pytest.approx(26.11, abs=0.01)
+        assert float(nums[1]) == pytest.approx(46.11, abs=0.01)
+        assert float(nums[2]) == pytest.approx(66.11, abs=0.01)
+    finally:
+        remove_test_file(test_file)
+
+def test_with_original_file():
+    """Тест с оригинальным файлом"""
+    if not os.path.exists('products.csv'):
+        pytest.skip("Файл products.csv не найден")
+    
+    # Рассчитаем ожидаемый результат
+    adult = pensioner = child = 0.0
+    with open('products.csv', 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            adult += float(row['Взрослый'])
+            pensioner += float(row['Пенсионер'])
+            child += float(row['Ребенок'])
+    
+    # Запустим скрипт без аргументов
+    output = run_price_sum_script()
+    nums = output.split()
+    assert len(nums) == 3
+    assert float(nums[0]) == pytest.approx(round(adult, 2), abs=0.01)
+    assert float(nums[1]) == pytest.approx(round(pensioner, 2), abs=0.01)
+    assert float(nums[2]) == pytest.approx(round(child, 2), abs=0.01)
+
+def test_with_missing_file():
+    """Тест с отсутствующим файлом"""
+    result = subprocess.run(
+        [INTERPRETER, 'price_sum.py', 'nonexistent.csv'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding='utf-8'
+    )
+    assert result.returncode != 0
+    assert "не найден" in result.stderr or "No such file" in result.stderr or "FileNotFoundError" in result.stderr
+
+@pytest.mark.parametrize("input_data, expected", test_data['metro'])
+def test_metro(input_data, expected):
+    result = run_script('metro.py', input_data)
+    assert result == expected
+
+@pytest.mark.parametrize("input_data, expected", test_data['minion_game'])
+def test_minion_game(input_data, expected):
+    assert run_script('minion_game.py', input_data).split('\n') == expected
+
+@pytest.mark.parametrize("input_data, expected", test_data['is_leap'])
+def test_is_leap(input_data, expected):
+    assert run_script('is_leap.py', input_data).split('\n') == expected
+
+@pytest.mark.parametrize("input_data, expected", test_data['happiness'])
+def test_happiness(input_data, expected):
+    assert run_script('happiness.py', input_data).split('\n') == expected
+
+@pytest.mark.parametrize("input_data, expected", test_data['pirate_ship'])
+def test_pirate_ship(input_data, expected):
+    assert run_script('pirate_ship.py', input_data).split('\n') == expected
+
+@pytest.mark.parametrize("input_data, expected", test_data['matrix_mult'])
+def test_matrix_mult(input_data, expected):
+    assert run_script('matrix_mult.py', input_data).split('\n') == expected
